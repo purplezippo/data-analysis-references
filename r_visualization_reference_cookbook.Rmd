@@ -1,0 +1,155 @@
+---
+title: "R_visualization_reference_cookbook"
+author: "muscle"
+date: "2017年1月10日"
+output: 
+  word_document: 
+    fig_height: 7.5
+    fig_width: 10
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#一、grid 绘图系统
+##1.1 ggplot2绘图
+初始化环境：
+```{r}
+library(ggplot2)
+head(diamonds)
+```
+
+###1.1.1 条形图
+####(1)简单条形图
+######1.系统默认风格
+```{r}
+ggplot(diamonds)+
+  geom_bar(aes(x = color))
+```
+
+######2.自主定制风格
+```{r}
+ggplot(diamonds)+
+  geom_bar(aes(x = color, fill = color))+  #按照color（分类变量）通过fill的方式进行色彩渲染
+  scale_x_discrete(name = "颜色种类")+
+  scale_y_continuous(name = "频数")+
+  scale_fill_brewer(palette = "Set1")
+```
+
+####(2)堆叠条形图
+######1.系统默认风格
+```{r}
+ggplot(diamonds)+
+  geom_bar(aes(x = cut, fill = color))
+```
+
+######2.自主定制风格
+
+```{r}
+ggplot(diamonds)+
+  geom_bar(aes(x = cut, fill = color))+
+  scale_x_discrete(name = "颜色种类")+
+  scale_y_continuous(name = "频数")+
+  scale_fill_brewer(name = "颜色",palette = "Oranges")
+```
+
+####(3)并列条形图
+######1.系统默认风格
+
+```{r}
+ggplot(diamonds)+
+  geom_bar(aes(x = cut, fill = color), position = "dodge")
+```
+
+######2.自主定制风格
+
+```{r}
+ggplot(diamonds)+
+  geom_bar(aes(x = cut, fill = color), col = "black",position = position_dodge(.8), width = .5)+  # width:设置柱体的宽度
+  scale_x_discrete(name = "颜色种类")+
+  scale_y_continuous(name = "频数")+
+  scale_fill_brewer(name = "颜色",palette = "YlOrRd")
+```
+
+
+
+###1.1.2 散点图
+######1.系统默认风格
+
+
+######2.自主定制风格
+
+
+
+###1.1.3 折线图
+######1.系统默认风格
+######2.自主定制风格
+
+###1.1.4 堆积图
+######1.系统默认风格
+######2.自主定制风格
+
+###1.1.5 组合图
+######1.系统默认风格
+######2.自主定制风格
+
+
+
+###1.1.4 主题风格
+```{r}
+diamond.sub <- diamonds[sample(1:nrow(diamonds),200),]
+```
+
+####
+
+```{r}
+windowsFonts(CA=windowsFont("Calibri"))
+
+ggplot(diamond.sub)+
+  geom_point(aes(x = x, y = price),col = "royalblue3", size = 5, alpha = .6)+
+  theme(legend.position="top",
+        panel.border=element_blank(),
+        panel.grid.major=element_line(linetype="dashed"),
+        panel.grid.minor=element_blank(),
+        plot.title=element_text(size=15,
+        colour="#003087",
+        family="CA"),
+        legend.text=element_text(size=9,colour="#003087",
+        family="CA"),
+        legend.key=element_blank(),
+        axis.text=element_text(size=10,colour="#003087",
+        family="CA", face = "bold"),
+        strip.text=element_text(size=12,colour="#EF0808",
+        family="CA", face = "bold"),
+        strip.background=element_blank())+
+  scale_x_continuous(name = "宽度")+
+  scale_y_continuous(name = "价格")
+```
+
+          
+          
+##2.1 lattice绘图
+
+#二、传统绘图系统
+
+#三、交互式绘图系统
+
+#四、色彩系统
+
+##
+
+```{r}
+library(RColorBrewer)
+display.brewer.all()  #显示所有可用颜色
+```
+
+
+```{r}
+brewer.pal(7,"YlOrRd")
+
+display.brewer.pal(7,"YlOrRd")
+```
+
+
+

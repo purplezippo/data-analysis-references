@@ -1,0 +1,519 @@
+---
+title: "time library"
+author: "muscle"
+date: '2016-12-29'
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+本文整理了R语言中与时间数据处理相关的基础函数与主流R包。以代码使用说明为主，以供参考之用。
+
+
+#Ⅰ日期和时间对象
+***
+## 1.1 日期对象
+Date 用来表示日期对象，仅反映年月日，不反应时分秒的时间信息以及时区信息。
+```{r}
+Sys.Date()  # 获得系统当前日期
+format(Sys.Date(), "%a %b %d")  # 日期格式化
+as.Date("2017-01-01", format = "%Y-%m-%d")  # 将字符串对象转化为日期对象
+
+```
+## 1.2 时间对象
+POSIX类时间对象，包含日期、时间以及时区信息。
+1. POSIXct: 以1970-01-01 00:00:00 为起点的秒数 
+2. POSIXlt: 将时间和日期独立存储在不同的向量中
+
+```{r warning=FALSE}
+Sys.time()  # 获取系统当前时间
+ISOdate(2016,12,30)  # 输入年、月、日获得时间
+iso.date <- ISOdatetime(2016,12,30,9,40,1)  # 输入年、月、日、时、分、秒获得精确时间
+julian(iso.date)  # 儒略日期
+julian(Sys.Date())  # 儒略日期
+
+
+iso.date.xlt <- as.POSIXlt(iso.date)  # 可取子集的时间类型
+iso.date.xlt$mday
+iso.date.xlt$mon  # 0 = JANUARY
+iso.date.xlt$year + 1900
+iso.date.xlt$yday
+iso.date.xlt$wday
+iso.date.xlt$hour
+iso.date.xlt$min
+iso.date.xlt$sec
+```
+
+
+#Ⅱ时间数据处理
+***
+## 2.1 基础函数
+格式化参数：
+
+| symbol | 说明 | eg |
+|---|-----------------------|----------|
+| %d |数字表示的日期（0~31） | 例如01~31|
+| %a |缩写的星期名 | 例如Mon|
+| %A |非缩写的星期名 | 例如Monday|
+| %m |月份（00~12） | 例如00~12|
+| %b |缩写的月份 | 例如Jan|
+| %B |非缩写的月份 | 例如January|
+| %y |两位数的年份 | 例如07|
+| %Y |四位数的年份 | 例如2007|
+
+默认的日期格式为yyyy-mm-dd
+
+```{r}
+# 格式化函数 format()
+format(Sys.Date(),format = "%B %d %Y") # 格式化当前日期
+
+# `-`
+startdate <- as.Date("2004-02-12")
+enddate <- as.Date("2011-01-22")
+days <-enddate - startdate;days
+
+# difftime() 计算时间间隔
+today <- Sys.Date()
+dob <- as.Date("1956-10-12")
+difftime(today, dob, units="weeks")
+
+```
+
+
+## 2.2 zoo
+zoo对象为xts以及其它大部分时间类对象的基类，zoo对象的基础操作（时间索引、na值处理、zoo对象构造等）需要掌握，数据操作类方法了解即可（这类操作总是可以在xts包中找到更好的替代）。
+
+```{r}
+library(zoo)
+```
+#### 2.2.1 构造zoo对象
+zoo对象包括数据和时间索引两个部分
+```{r warning=FALSE}
+date <- as.Date("2016-12-29") + c(1,3,4,6,8)
+data <- runif(length(date)) 
+(z <- zoo(data, date))
+
+zoo(matrix(1:15,3), 0:9)  #矩阵形式
+
+```
+
+#### 2.2.2 构造zooreg对象
+```{r}
+zooreg(1:16, frequency = 365, start = c(1991,1))
+
+```
+
+#### 2.2.3 zoo对象数据操作
+
+```{r warning=FALSE}
+# read.zoo()  以zoo格式读入数据
+
+coredata(z)  # coredata 取出zoo对象的数据部分
+
+index(z)  # index 取出zoo对象的索引部分
+
+window(z, index = index(z)[1:3], start = as.Date("2016-12-29"))  # window 按时间筛选数据
+
+(y1 <- zoo(matrix(1:10, ncol = 2), 1:5))
+(y2 <- zoo(matrix(runif(10), ncol = 2), 3:7))
+
+merge(y1, y2, all = F)  # 仅合并索引相同的值
+merge(y1, y2, all = F, suffixes = c("a","b"))  # 仅合并索引相同的值,并命名
+merge(y1, y2, all = T)  # 按照索引合并所有数据，空缺值以NA表示
+merge(y1, y2, all = T, fill = "mis")  # 按照索引合并所有数据，空缺值以mis表示
+
+```
+
+#### 2.2.4 时间数据处理函数
+```{r}
+# 按特定时间分割，进行数据操作，具体见帮助文档
+# aggregate()
+
+# 计算移动平均值,具体见帮助文档
+# rollapply()
+
+# 区间分割
+## example time series:
+set.seed(0)
+flow <- ts(filter(rlnorm(200, mean = 1), 0.8, method = "r"))
+
+## highlight values above and below thresholds.
+## this draws on top using semi-transparent colors.
+rgb <- hcl(c(0, 0, 260), c = c(100, 0, 100), l = c(50, 90, 50), alpha = 0.3)
+plot(flow)
+xblocks(flow > 30, col = rgb[1]) ## high values red
+xblocks(flow < 15, col = rgb[3]) ## low value blue
+xblocks(flow >= 15 & flow <= 30, col = rgb[2]) ## the rest gray
+
+```
+
+#### 2.2.5 缺失值处理函数
+```{r}
+# 缺失值填充(自定义填充方法)
+z <- zoo(c(NA, 2, NA, 1, 4, 5, 2, NA))
+na.fill(z, "extend")
+na.fill(z, c("extend", NA))
+na.fill(z, -(1:3))
+na.fill(z, list(NA, NULL, NA))
+
+# 缺失值替换，具体见帮助文档
+# ?na.locf()  # 用NA值的前一项或后一项填充)
+# na.aggregate()  # 统计量替换
+# na.approx()  # 差值替换
+
+# na.StructTS()  # 用季节Kalman滤波替换NA
+z <- zoo(c(NA, 2, NA, 1, 4, 5, 2, NA))
+na.trim(z)  # 去除边界上的NA值
+
+```
+
+#### 2.2.6 输出格式
+```{r}
+# 年-季度
+x <- as.yearqtr(2000 + seq(0, 7)/4)
+x
+
+format(x, "%Y Quarter %q")
+as.yearqtr("2001 Q2")
+as.yearqtr("2001 q2") # same
+as.yearqtr("2001-2") # same
+
+# 年-月
+x <- as.yearmon(2000 + seq(0, 23)/12)
+x
+
+as.yearmon("mar07", "%b%y")
+as.yearmon("2007-03-01")
+as.yearmon("2007-12")
+
+
+```
+
+
+## 2.3 xts
+```{r}
+library(xts)
+```
+#### 2.3.1 定义xts对象
+```{r}
+data("sample_matrix")
+head(sample_matrix)
+temp.xts <- as.xts(sample_matrix, descr = "xts data set")
+str(temp.xts)
+```
+
+#### 2.3.2 xts对象基本操作
+```{r}
+head(temp.xts['2007'])  # 按年份筛选
+head(temp.xts['2007-03'])  # 按月份筛选
+head(temp.xts['2007-03-06/2007-03-09'])  # 按时间区间筛选
+plot(temp.xts)  # 默认对第一类数据绘图
+plot(temp.xts, type = "candles")  # 绘制k线图
+
+```
+
+
+#### 2.3.3 xts包基本函数
+
+```{r warning=FALSE}
+firstof(2016)  # 自上而下（年，月，日），最初时间
+lastof(2016)  # 自上而下（年，月，日），最末时间
+firstof(2016,10)
+lastof(2016,10)   
+.parseISO8601('2016')  # 生成成对边界时间
+
+time.index <- timeBasedSeq('2017-01-01/2017-02-01')  # 生成日期序列,以日为间隔
+head(time.index)
+time.index <- timeBasedSeq('2017-01-01/2017-02-01 01:01')  # 生成日期序列,以分为间隔
+head(time.index)
+
+time.xts <- xts(runif(10), time.index[1:10])  # 利用时间索引构造xts对象
+indexClass(time.xts)
+
+indexFormat(time.xts) <- "%Y-%b-%d %H:%M:%OS3"  # 调整日期的显示格式
+head(time.xts)
+
+.indexhour(time.xts)  # 按小时取索引时间
+.indexmin(time.xts)  # 按分钟取索引时间
+
+align.time(Sys.time() + 1:30, 10)[1:12]  # 规格化时间序列，10秒
+align.time(Sys.time() + 1:60, 10)[1:12]  # 规格化时间序列，60秒
+
+
+time.xts <- xts(runif(365), timeBasedSeq('2017-01-01/2017-12-31') )  
+start(time.xts)  # 开始时间
+end(time.xts)  # 结束时间
+periodicity(time.xts)  # 取出按日划分的时间范围
+
+# 时间统计
+ndays(sample_matrix)
+nweeks(sample_matrix)
+nmonths(sample_matrix)
+nquarters(sample_matrix)
+nyears(sample_matrix)
+
+```
+
+
+#### 2.3.4 xts包数据处理函数
+```{r}
+temp.xts <- xts(runif(365), timeBasedSeq("2017-01-01/2017-12-31"))
+```
+
+
+##### (1)切分数据
+```{r}
+to.period(temp.xts)  # 切分数据，默认按月
+endpoints(temp.xts)  # 按间隔分割索引数据
+endpoints(temp.xts, "days", k = 7)  # 按7天分割
+endpoints(temp.xts, "weeks")  # 按周分割
+endpoints(temp.xts, "months")  # 按月分割
+
+temp.xts.split <- split(temp.xts)  # 切片，默认按照月份进行分割
+head(temp.xts.split[[1]])
+```
+
+
+##### (2)计算函数
+
+```{r}
+
+apply.monthly(temp.xts, mean)  # 按月切分，计算
+apply.quarterly(temp.xts, mean)  # 按季切分，计算
+
+temp.xts <- na.omit(temp.xts)
+endpois <- endpoints(temp.xts, "weeks")  # 按周分割
+period.apply(temp.xts, INDEX = endpois, mean)[1:6]  # 按切分间隔施加处理
+period.max(na.omit(temp.xts), INDEX = endpois)[1:6]  # 计算周期为7天的最大值
+period.min(na.omit(temp.xts), INDEX = endpois)[1:6]  # 计算周期为7天的最小值
+period.prod(na.omit(temp.xts), INDEX = endpois)[1:6]  # 计算组内元素的累积
+
+
+```
+
+##### (3)数据合并
+```{r}
+a.xts <- xts(runif(6), timeBasedSeq("2017-01-01/2017-01-06"))
+b.xts <- xts(runif(6), timeBasedSeq("2017-01-04/2017-01-09"))
+merge(a.xts, b.xts, join = "inner")  # 合并，内连接
+merge(a.xts, b.xts, join = "outer")  # 合并，全连接，缺失值用NA填补
+```
+
+
+##### (4)功能函数
+```{r}
+# 时间格式判断函数
+timeBased("2017-01-01")  # 判断数据是否为时间格式
+timeBased(as.Date("2017-01-01"))
+
+# 生成时间序列
+timeBasedSeq('2017/2029')  # 年
+timeBasedSeq('201701/2029')[1:6]  # 月
+timeBasedSeq('20170101/2029')[1:6]  # 日
+timeBasedSeq("20170101 0101",length.out = 30)
+
+# 按索引取数据
+first(time.xts, 3)
+last(time.xts, 3)
+last(time.xts, "1 week")
+
+# 滞后函数
+time.xts[1:6]
+lag(time.xts)[1:6]
+
+# 差分函数
+diff(time.xts)[1:6]
+
+# 顺序检查函数
+isOrdered(time.xts, increasing = T)
+
+# 时间维度上的唯一索引
+ds <- options(digits.secs=6) # so we can see the change
+(x <- xts(1:10, as.POSIXct("2011-01-21") + c(1,1,1,2:8)/1e3))
+make.index.unique(x)
+options(ds)
+
+# 时区查询
+indexTZ(temp.xts)
+tzone(temp.xts)
+```
+
+
+#### 2.3.5 xts缺失数据处理
+```{r}
+temp.xts[c(2,3,4,6,10)] <- NA
+head(temp.xts)
+na.locf(temp.xts)[1:6]  # 用NA值的前一个非空值填补缺失值
+na.locf(temp.xts, fromLast = T)[1:6]  # 用NA值的后一个非空值填补缺失值
+
+```
+
+## 2.4 lubridate
+```{r}
+library(lubridate)
+```
+
+#### 2.4.1 提取日期和时间成分
+
+```{r}
+(time.lub <- Sys.time())
+year(time.lub)
+month(time.lub)
+day(time.lub)
+hour(time.lub)
+minute(time.lub)
+wday(time.lub, label = T)
+```
+
+#### 2.4.2 格式转化
+将不同顺序排列的日期字符串转化为标准的日期对象。
+
+```{r warning = FALSE}
+# 日期成分的各种排列
+ymd("20170102")
+mdy("01022017")
+dmy("02012017")
+
+# 日期成分的各种分隔
+ymd("2017/01/02")
+mdy("01:02:2017")
+dmy("02*01*2017")
+
+# 时间数据
+ymd_hms("20170102121212")
+ymd_hms("2017/01/02121212")
+mdy_hms("01/02/2017 12:12:12")
+
+
+```
+
+#### 2.4.3 时区
+
+* tz：提取时间数据的时区
+* with_tz：将时间数据转换为另一个时区的同一时间
+* force_tz：将时间数据的时区强制转换为另一个时区
+
+#####(1)显示不同时区的相同时刻
+```{r}
+(meeting <- ymd_hms("2017-01-03 09:00:00", tz = "Pacific/Auckland"))
+with_tz(meeting, "Asia/Taipei")    #显示不同的时区相同的时刻
+```
+
+#####(2)不改变时刻的同时改变时区
+```{r}
+(mistake <- force_tz(meeting, "America/Chicago"))
+```
+
+#### 2.4.4 时间间隔
+#####(1)定义时间区间对象
+lubridate中定义了两种时间跨度类分别应用与连续时间和周期性时间。
+```{r}
+(time.span <- interval(ymd(20160504), ymd(20170103)))
+ymd(20160504) %--% ymd(20170103)
+```
+
+#####(2)时间区间计算
+```{r}
+# 时间间隔
+as.period(time.span)
+# 时间间隔内的秒数
+time.span/dminutes(1)
+
+```
+
+#### 2.4.5 时间相关计算
+
+#####(1)基本计算
+```{r}
+minutes(2)  # 分钟
+dminutes(2)  # 分钟跨度内的秒数
+
+hours(2)  # 小时
+dhours(2)  # 小时跨度内的秒数
+
+years(2)  # 年
+dyears(2)  # 年跨度内的秒数
+
+ymd('20160228')+dyears(1)  # 可以直接加减计算
+ymd('20160228')+years(1)  # 可以直接加减计算
+
+leap_year(2016)  # 判断是否为闰年
+
+yday(Sys.Date())  # 返回输入日期为当年的第几天
+
+```
+**attention：**
+
+时段类函数，它可以处理三类对象，分别是：
+* interval：最简单的时段对象，它由两个时点数据构成。
+* duration：去除了时间两端的信息，纯粹以秒为单位计算时段的长度，不考虑闰年和闰秒，它同时也兼容基本包中的difftime类型对象。
+* period：以较长的时钟周期来计算时段长度，它考虑了闰年和闰秒，适用于长期的时间计算。
+
+从两个时点生成一个interval时段数据
+```{r}
+x <- ymd('2016-11-20');x
+y <- interval(x, ymd("2017-01-03"));y
+# 从interval格式转为duration格式
+as.duration(y)
+# 时点+时段生成一个新的时点
+now() + as.duration(y)
+# 10天后的时间数据
+now() + ddays(10)
+```
+
+几个月和几年的长度常常这样做算术他们可以直观的改变。考虑一个简单的操作，January 31st + one month。如果答案是：
+* February 31st （不存在）
+* March 4th （1月31日以后31天），或
+* February 28th （假设它不是一个闰年）
+上述情况为一些无效的日期，为使lubridate尽可能一致，如果加上或减去一个月或一年创建一个无效的日期，lubridate将返回NA
+针对于这些问题使用特殊的二元计算符：%m+%和%m-%，其中%m+%和%m-%可以对日期进行自动回滚因此可以追溯到在真实情况下一个
+月的最后一天。
+```{r}
+jan31 <- ymd("2013-01-31")
+jan31 + months(0:11)
+floor_date(jan31, "month") + months(0:11) + days(31)
+jan31 %m+% months(0:11)
+```
+
+##### (2)二元操作符
+```{r}
+# %within%
+int <- interval(ymd("2001-01-01"), ymd("2002-01-01"))
+int2 <- interval(ymd("2001-06-01"), ymd("2002-01-01"))
+
+ymd("2001-05-03") %within% int # TRUE
+int2 %within% int # TRUE
+ymd("1999-01-01") %within% int # FALSE
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
